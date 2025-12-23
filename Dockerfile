@@ -1,25 +1,19 @@
-FROM python:3.12-slim
+FROM python:3.11-slim
 
-# Install system dependencies
+# Install system deps + tesseract language data
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
+    tesseract-ocr-eng \
     poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Set workdir
 WORKDIR /app
 
-# Copy requirements
 COPY requirements.txt .
-
-# Install python deps
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app
 COPY . .
 
-# Expose port
-EXPOSE 10000
+ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/4.00/tessdata
 
-# Start server
-CMD ["uvicorn", "ocr_api:app", "--host", "0.0.0.0", "--port", "10000"]
+CMD ["uvicorn", "ocr_api:app", "--host", "0.0.0.0", "--port", "8000"]
