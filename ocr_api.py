@@ -15,6 +15,23 @@ def normalize_text(img_text: str) -> str:
     t = t.replace("l", "I")
     return t
 
+def apply_common_fixes(text: str) -> str:
+    COMMON_FIXES = {
+        "piast": "first",
+        "frist": "first",
+        "fi rst": "first",
+        "internationa!": "international",
+        "intemationai": "international",
+        "1 st": "1st",
+        "voiunteer":"volunteer",
+        "iiorld": "world",
+        "attendifs": "attending",
+    }
+    t = text.lower()
+    for wrong, right in COMMON_FIXES.items():
+        t = t.replace(wrong, right)
+    return t
+
 # ---------- Marksheets ----------
 def extract_sgpa_cgpas(text: str):
     pattern = r'([1IVX]+)[\s\.\)\-:]*\s*\d+\s+\d+\s+([\d.]+)\s*([\d.]+)?\s*(PASSED|FAILED|Pass|Fail)?'
@@ -59,13 +76,21 @@ def cgpa_points(cgpa: float, stream: str) -> float:
 
 # ---------- Certificates ----------
 CATEGORY_KEYWORDS = {
-    "Industry Experience": ["intern", "internship", "industrial", "industry", "placement", "training"],
+    "Industry Experience": ["intern", "internship", "industrial", "industry", "placement", "trainee"],
     "National Cadet Corps": ["ncc", "national cadet", "cadet corps"],
     "Sports": ["sport", "tournament", "match", "football", "cricket", "athletics", "badminton"],
     "Outreach Activities": ["outreach", "community", "volunteer", "social service", "blood donation", "drive"],
-    "Academic Engagement and Research": ["research", "paper", "presentation", "conference", "seminar", "workshop", "project"],
+    "Academic Engagement and Research": ["research", "paper", "seminar", "conference", "workshop", "online course", "course", "training","international","webinar"],
     "Extra-Curricular Activities": ["cultural", "dance", "music", "debate", "drama", "competition", "club", "talent"],
 }
+
+LEVEL_KEYWORDS = {
+    "International": ["international", "abroad", "overseas"],
+    "National": ["national"]
+}
+ORGANIZING_WORDS = [
+    "organizing committee", "organizing", "volunteer",
+]
 
 CATEGORY_ORDER = [
     "Industry Experience",
@@ -81,15 +106,13 @@ def detect_certificate_type_rank_lead(event_text: str) -> Tuple[str, Optional[st
     t = re.sub(r"[^a-z0-9\s]", " ", t)
     t = re.sub(r"\s+", " ", t)
 
-    is_lead = any(w in t for w in [
-        "captain", "president", "organizer",
-        "coordinator", "leadership", "head", "incharge"
+   is_lead = any(w in t for w in [
+        "captain", "organizer", "leadership", "head", "sub head", "sub-head", "president",
+    "vice president", "vice-president"
     ])
 
-    participation_words = [
-        "participation", "participated", "participating",
-        "completed", "completion", "participate"
-    ]
+    participation_words = ["participation", "participated", "participating","contribution","contributed","contributing","member","member of","take part","took part",
+                           "completed", "completion", "participate","part","attending","attended"]
     if any(w in t for w in participation_words):
         return "Participation", None, is_lead
 
@@ -101,7 +124,7 @@ def detect_certificate_type_rank_lead(event_text: str) -> Tuple[str, Optional[st
         cert_type = "Other"
 
     rank = None
-    if re.search(r'\b(1st|first|winner|gold)\b', t):
+    if re.search(r'\b(1st rank|first|first position|winner|gold|1st)\b', t):
         rank = "1"
     elif re.search(r'\b(2nd|second|runner|silver)\b', t):
         rank = "2"
@@ -120,11 +143,23 @@ def detect_certificate_type_rank_lead(event_text: str) -> Tuple[str, Optional[st
 
 def detect_certificate_category(text: str) -> Optional[str]:
     low = text.lower()
+
+    # 🚫 Organizing activities should NEVER be AER
+    if any(w in low for w in [
+        "organizing committee", "organizing", "organiser",
+        "coordinator",
+    ]):
+        return "Extra-Curricular Activities"
+
+    # Normal priority order
     for cat in CATEGORY_ORDER:
         for kw in CATEGORY_KEYWORDS[cat]:
-            if kw in low:
+            if re.search(rf'\b{re.escape(kw)}\b', low):
                 return cat
-    return None
+
+
+    return "Extra-Curricular Activities"
+
 
 def certificate_points_for_category(cert_type: str, rank: Optional[str],
                                     is_lead: bool, category: str,
