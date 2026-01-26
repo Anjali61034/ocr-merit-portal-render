@@ -106,10 +106,11 @@ def detect_certificate_type_rank_lead(event_text: str) -> Tuple[str, Optional[st
     t = re.sub(r"[^a-z0-9\s]", " ", t)
     t = re.sub(r"\s+", " ", t)
 
-   is_lead = any(w in t for w in [
+    is_lead = any(w in t for w in [
         "captain", "organizer", "leadership", "head", "sub head", "sub-head", "president",
-    "vice president", "vice-president"
+        "vice president", "vice-president"
     ])
+
 
     participation_words = ["participation", "participated", "participating","contribution","contributed","contributing","member","member of","take part","took part",
                            "completed", "completion", "participate","part","attending","attended"]
